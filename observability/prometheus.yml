@@ -1,0 +1,4 @@
+# Prometheus ne va chercher aucune donnée lui-même :
+# le Collector (OTLP) et Tempo (remote write) les lui envoient.
+global:
+  scrape_interval: 15s

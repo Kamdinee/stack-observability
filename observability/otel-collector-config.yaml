@@ -1,0 +1,35 @@
+receivers:                       # données envoyées par les services (agent Java OpenTelemetry)
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch: {}                      # regroupe les envois par paquets
+
+exporters:
+  otlp/tempo:                    # traces -> Tempo
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+  otlphttp/prometheus:           # métriques -> Prometheus
+    endpoint: http://prometheus:9090/api/v1/otlp
+  otlphttp/loki:                 # logs -> Loki
+    endpoint: http://loki:3100/otlp
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp/tempo]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/loki]
