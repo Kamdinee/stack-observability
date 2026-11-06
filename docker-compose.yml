@@ -1,0 +1,65 @@
+# Stack d'observabilité : Collector OpenTelemetry, Loki, Tempo, Prometheus, Grafana.
+# Les microservices Spring Boot seront ajoutés dans ce fichier pendant la réalisation.
+# Lancement : docker compose up -d   ->   Grafana sur http://localhost:3000
+
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes:
+      - ./observability/otel-collector-config.yaml:/etc/otel/config.yaml
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    depends_on:
+      - loki
+      - tempo
+      - prometheus
+
+  loki:
+    image: grafana/loki:latest
+    command: ["-config.file=/etc/loki/loki-config.yaml"]
+    volumes:
+      - ./observability/loki-config.yaml:/etc/loki/loki-config.yaml
+      - loki-data:/loki          # données des logs
+    ports:
+      - "3100:3100"   # API interrogée par Grafana et le Collector
+
+  tempo:
+    image: grafana/tempo:latest
+    command: ["-config.file=/etc/tempo.yaml"]
+    user: "0"                    # droits d'écriture sur le volume
+    volumes:
+      - ./observability/tempo.yaml:/etc/tempo.yaml
+      - tempo-data:/var/tempo    # données des traces
+    ports:
+      - "3200:3200"   # API interrogée par Grafana
+
+  prometheus:
+    image: prom/prometheus:v2.55.0
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--web.enable-otlp-receiver"           # métriques du Collector
+      - "--web.enable-remote-write-receiver"   # métriques de Tempo
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"   # interface web et API, interrogée par Grafana
+
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"        # accès sans connexion en local
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning
+    ports:
+      - "3000:3000"   # interface web
+    depends_on:
+      - loki
+      - tempo
+      - prometheus
+
+volumes:
+  loki-data:
+  tempo-data:

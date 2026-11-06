@@ -1,0 +1,35 @@
+auth_enabled: false                # pas d'authentification en local
+
+server:
+  http_listen_port: 3100
+
+common:                            # réglages communs à tous les modules
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  storage:
+    filesystem:                    # stockage sur le disque du conteneur
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1            # une seule instance de Loki
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:                     # format de l'index
+  configs:
+    - from: 2024-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+limits_config:
+  allow_structured_metadata: true  # nécessaire pour les logs OTLP (traceId)
+  retention_period: 48h            # conserve les logs 48 h
+
+compactor:                         # supprime les logs trop anciens
+  working_directory: /loki/compactor
+  retention_enabled: true
+  delete_request_store: filesystem
